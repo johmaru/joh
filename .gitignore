@@ -1,0 +1,5 @@
+build/*
+cmake-build-debug/*
+CMakeFiles/*
+compile_commands.json
+.idea/*
