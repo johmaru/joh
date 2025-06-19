@@ -10,6 +10,7 @@ int parse(int argc, char *argv[]) {
     options.add_options()
         ("h,help", "Print help")
         ("v,version", "Print version")
+        ("l,language", "Set language")
         ("c,config", "Path to config file", cxxopts::value<std::string>()->default_value("joh_config.json"));
 
     try {
@@ -33,6 +34,12 @@ int parse(int argc, char *argv[]) {
         if (result.count("version")) {
             std::cout << "joh version : " << joh_main::VERSION << std::endl;
             return AP_NO_ERROR;
+        }
+
+        if (result.count("language")) {
+            json settings = load_and_validate_settings();
+            
+            std::cout << "Setting Language is :" << settings["language"] << std::endl;
         }
 
         if (result.count("config")) {

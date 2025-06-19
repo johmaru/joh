@@ -9,9 +9,7 @@
 #include "joh_main.h"
 #include <iostream>
 #include <filesystem>
-#include <nlohmann/json.hpp>
 
-using json = nlohmann::json;
 
 struct settings_json {
     std::string language;
@@ -131,4 +129,88 @@ int settings_init() {
     }
 
     return FS_NO_ERROR;
+}
+
+int check_json_structure_and_restructure(const json& j) {
+    json updatedJson = j;
+    bool needsUpdate = false;
+
+    if (!updatedJson.contains("language")) {
+        updatedJson["language"] = "en";
+        needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+        auto documentsPath = getDocumentFolder();
+        std::filesystem::path settingsPath;
+
+        switch (joh_main::getPlatformName()) {
+            case OS_WINDOWS:
+                settingsPath = documentsPath / "joh_settings" / "settings.json";
+                break;
+            case OS_LINUX:
+                settingsPath = documentsPath / ".joh_settings" / "settings.json";
+                break;
+            default:
+                std::cerr << "Unknown operating system. Cannot update settings." << std::endl;
+                return FS_ERROR_UNKNOWNOPERETOR;
+        }
+
+        try {
+            std::ofstream file(settingsPath);
+            file << updatedJson.dump(4);
+            if (file.fail()) {
+                std::cerr << "Error writing updated settings to file: " << settingsPath << std::endl;
+                return FS_ERROR_INVALID_PATH;
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Exception while updating settings: " << e.what() << std::endl;
+            return FS_ERROR_INVALID_PATH;
+        }
+    }
+
+    return FS_NO_ERROR;
+}
+
+json load_and_validate_settings() {
+    auto documentsPath = getDocumentFolder();
+    std::filesystem::path settingsPath;
+
+    switch (joh_main::getPlatformName()) {
+        case OS_WINDOWS:
+            settingsPath = documentsPath / "joh_settings" / "settings.json";
+            break;
+        case OS_LINUX:
+            settingsPath = documentsPath / ".joh_settings" / "settings.json";
+            break;
+        default:
+            std::cerr << "Unknown operating system. Cannot load settings." << std::endl;
+            return FS_ERROR_UNKNOWNOPERETOR;
+    }
+
+    if (!std::filesystem::exists(settingsPath)) {
+        std::cerr << "Settings file does not exist: " << settingsPath << std::endl;
+        return FS_ERROR_INVALID_PATH;
+    }
+
+    try {
+        std::ifstream file(settingsPath);
+        json j;
+        file >> j;
+
+        if (file.fail()) {
+            std::cerr << "Error reading settings from file: " << settingsPath << std::endl;
+            return FS_ERROR_INVALID_PATH;
+        }
+
+        if (check_json_structure_and_restructure(j) != FS_NO_ERROR) {
+            std::cerr << "Error checking or updating JSON structure." << std::endl;
+            return FS_ERROR_INVALID_PATH;
+        }
+
+        return j;
+    } catch (const std::exception& e) {
+        std::cerr << "Exception while loading settings: " << e.what() << std::endl;
+        return FS_ERROR_INVALID_PATH;
+    }
 }
